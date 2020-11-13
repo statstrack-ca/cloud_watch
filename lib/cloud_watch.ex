@@ -148,14 +148,21 @@ defmodule CloudWatch do
 
   defp take_metadata(metadata, keys), do: Keyword.take(metadata, keys)
 
-  defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) when is_tuple(ts) do
-    # Jason barfs if you feed it a tuple so it needs to get changed to a list here.
-    # This timestamp may come across like {{2020, 11, 13}, {13, 5, 44, 152}}
-    Logger.Formatter.format(format, level, msg, Tuple.to_list(ts), take_metadata(md, keys))
-  end
-
   defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
-    Logger.Formatter.format(format, level, msg, ts, take_metadata(md, keys))
+    # Jason barfs if it gets a tuple so don't let a tuple through
+    formatted_ts =
+      cond do
+        {:ok, converted_ts} = NaiveDateTime.from_erl(ts) ->
+          converted_ts
+
+        is_tuple(ts) ->
+          Tuple.to_list(ts)
+
+        true ->
+          ts
+      end
+
+    Logger.Formatter.format(format, level, msg, converted_ts, take_metadata(md, keys))
   end
 
   defp flush(_state, _opts \\ [force: false])
