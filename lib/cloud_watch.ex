@@ -151,7 +151,7 @@ defmodule CloudWatch do
   defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) when is_tuple(ts) do
     # Jason barfs if you feed it a tuple so it needs to get changed to a list here.
     # This timestamp may come across like {{2020, 11, 13}, {13, 5, 44, 152}}
-    Logger.Formatter.format(format, level, msg, to_list(ts), take_metadata(md, keys))
+    Logger.Formatter.format(format, level, msg, Tuple.to_list(ts), take_metadata(md, keys))
   end
 
   defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
