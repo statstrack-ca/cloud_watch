@@ -162,7 +162,7 @@ defmodule CloudWatch do
           ts
       end
 
-    Logger.Formatter.format(format, level, msg, converted_ts, take_metadata(md, keys))
+    Logger.Formatter.format(format, level, msg, formatted_ts, take_metadata(md, keys))
   end
 
   defp flush(_state, _opts \\ [force: false])
