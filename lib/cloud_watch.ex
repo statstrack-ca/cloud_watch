@@ -32,7 +32,7 @@ defmodule CloudWatch do
       ) do
     if Logger.compare_levels(level, min_level) != :lt and metadata_matches?(md, metadata_filter) do
       state
-      |> add_message(level, msg, inspect(ts), md)
+      |> add_message(level, msg, ts, md)
       |> flush()
     else
       {:ok, state}
@@ -148,20 +148,15 @@ defmodule CloudWatch do
 
   defp take_metadata(metadata, keys), do: Keyword.take(metadata, keys)
 
-  defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
+  defp format_event(level, msg, {{_year, _month, _day}, {_hour, _minute, _second, _millisecond}} = ts, md, %{
+         format: format,
+         metadata: keys
+       }) do
     # Jason barfs if it gets a tuple so don't let a tuple through
-    # formatted_ts =
-    #   cond do
-    #     {:ok, converted_ts} = NaiveDateTime.from_erl(ts) ->
-    #       converted_ts
+    Logger.Formatter.format(format, level, msg, NaiveDateTime.from_erl(ts), take_metadata(md, keys))
+  end
 
-    #     is_tuple(ts) ->
-    #       Tuple.to_list(ts)
-
-    #     true ->
-    #       ts
-    #   end
-
+  defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
     Logger.Formatter.format(format, level, msg, ts, take_metadata(md, keys))
   end
 
