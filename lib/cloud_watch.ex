@@ -148,18 +148,38 @@ defmodule CloudWatch do
 
   defp take_metadata(metadata, keys), do: Keyword.take(metadata, keys)
 
-  defp format_event(level, msg, ts = {{_year, _month, _day}, {_hour, _minute, _second, _millisecond}}, md, %{
+  defp format_event(level, msg, ts, md, %{
          format: format,
          metadata: keys
-       }) do
+       })
+       when is_list(ts) do
     # Jason barfs if it gets a tuple so don't let a tuple through
-    case ts do
-      {{_year, _month, _day}, {_hour, _minute, _second, _millisecond}} ->
-        Logger.Formatter.format(format, level, msg, NaiveDateTime.from_erl(ts), take_metadata(md, keys))
+    timestamp =
+      case ts do
+        [{{_year, _month, _day}, {_hour, _minute, _second, millis}}, {_millis, _nanos}, _calendar] ->
+          NaiveDateTime.from_erl(ts)
 
-      ts ->
-        Logger.Formatter.format(format, level, msg, inspect(ts), take_metadata(md, keys))
-    end
+        ts ->
+          inspect(ts)
+      end
+
+    Logger.Formatter.format(format, level, msg, timestamp, take_metadata(md, keys))
+  end
+
+  defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) when is_tuple(ts) do
+    timestamp =
+      case ts do
+        {{_year, _month, _day}, {_hour, _minute, _second}} ->
+          Logger.Formatter.format(format, level, msg, NaiveDateTime.from_erl(ts), take_metadata(md, keys))
+
+        {{year, month, day}, {hour, minute, second, millisecond}} ->
+          NaiveDateTime.from_erl({{year, month, day}, {hour, minute, second}, {millisecond, 0}})
+
+        ts ->
+          inspect(ts)
+      end
+
+    Logger.Formatter.format(format, level, msg, timestamp, take_metadata(md, keys))
   end
 
   defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
