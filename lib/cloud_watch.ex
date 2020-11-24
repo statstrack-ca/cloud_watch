@@ -156,11 +156,11 @@ defmodule CloudWatch do
     # Jason barfs if it gets a tuple so don't let a tuple through
     timestamp =
       case ts do
-        [{{_year, _month, _day}, {_hour, _minute, _second, millis}}, {_millis, _nanos}, _calendar] ->
-          NaiveDateTime.from_erl(ts)
+        [{{year, month, day}, {hour, minute, second, millis}}, {_millis, _nanos}, _calendar] ->
+          validate_date_time({{year, month, day}, {hour, minute, second}, {millis, 0}})
 
         ts ->
-          inspect(ts)
+          NaiveDateTime.utc_now!()
       end
 
     Logger.Formatter.format(format, level, msg, timestamp, take_metadata(md, keys))
@@ -170,20 +170,30 @@ defmodule CloudWatch do
     timestamp =
       case ts do
         {{_year, _month, _day}, {_hour, _minute, _second}} ->
-          Logger.Formatter.format(format, level, msg, NaiveDateTime.from_erl(ts), take_metadata(md, keys))
+          validate_date_time(ts)
 
         {{year, month, day}, {hour, minute, second, millisecond}} ->
-          NaiveDateTime.from_erl({{year, month, day}, {hour, minute, second}, {millisecond, 0}})
+          validate_date_time({{year, month, day}, {hour, minute, second}, {millisecond, 0}})
 
         ts ->
-          inspect(ts)
+          NaiveDateTime.utc_now!()
       end
 
     Logger.Formatter.format(format, level, msg, timestamp, take_metadata(md, keys))
   end
 
   defp format_event(level, msg, ts, md, %{format: format, metadata: keys}) do
-    Logger.Formatter.format(format, level, msg, ts, take_metadata(md, keys))
+    Logger.Formatter.format(format, level, msg, NaiveDateTime.utc_now!(), take_metadata(md, keys))
+  end
+
+  defp validate_date_time(ts) do
+    case NaiveDateTime.from_erl(ts) do
+      {:ok, time} ->
+        time
+
+      _error ->
+        NaiveDateTime.utc_now!()
+    end
   end
 
   defp flush(_state, _opts \\ [force: false])
